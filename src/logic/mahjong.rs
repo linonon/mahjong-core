@@ -37,7 +37,11 @@ impl Mahjong {
             "Invalid value for the given suit"
         );
 
-        Mahjong { suit, value, belongs_to }
+        Mahjong {
+            suit,
+            value,
+            belongs_to,
+        }
     }
 
     pub fn cmp(&self, b: &Mahjong) -> std::cmp::Ordering {
