@@ -1,7 +1,3 @@
-use rand::{seq::SliceRandom, thread_rng, SeedableRng};
-
-use super::player::SeatPosition;
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Suit {
     M, // 万子
@@ -23,25 +19,20 @@ impl std::fmt::Display for Suit {
     }
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Mahjong {
     pub suit: Suit,
     pub value: i8,
-    pub belongs_to: Option<SeatPosition>,
 }
 
 impl Mahjong {
-    pub fn new(suit: Suit, value: i8, belongs_to: Option<SeatPosition>) -> Self {
+    pub fn new(suit: Suit, value: i8) -> Self {
         assert!(
             (0..=9).contains(&value) || (suit == Suit::Z && (1..=7).contains(&value)),
             "Invalid value for the given suit"
         );
 
-        Mahjong {
-            suit,
-            value,
-            belongs_to,
-        }
+        Mahjong { suit, value }
     }
 
     pub fn cmp(&self, b: &Mahjong) -> std::cmp::Ordering {
@@ -63,10 +54,6 @@ impl Mahjong {
             a.cmp(&b)
         }
     }
-
-    pub fn is_same_mahjong(&self, b: &Mahjong) -> bool {
-        self.suit == b.suit && self.value == b.value
-    }
 }
 
 impl std::fmt::Display for Mahjong {
@@ -86,5 +73,11 @@ impl std::fmt::Display for Mahjong {
         };
 
         write!(f, "{}{}", value, self.suit)
+    }
+}
+
+impl std::cmp::PartialEq for Mahjong {
+    fn eq(&self, other: &Self) -> bool {
+        self.suit == other.suit && self.value == other.value
     }
 }

@@ -29,15 +29,15 @@ impl Deck {
         let mut cards = Vec::<Mahjong>::with_capacity(136);
 
         for suit in &[Suit::M, Suit::P, Suit::S] {
-            cards.push(Mahjong::new(*suit, 0, None));
+            cards.push(Mahjong::new(*suit, 0));
             for value in 1..=9 {
                 if value == 5 {
                     for _ in 0..3 {
-                        cards.push(Mahjong::new(*suit, value, None));
+                        cards.push(Mahjong::new(*suit, value));
                     }
                 } else {
                     for _ in 0..4 {
-                        cards.push(Mahjong::new(*suit, value, None));
+                        cards.push(Mahjong::new(*suit, value));
                     }
                 }
             }
@@ -45,7 +45,7 @@ impl Deck {
 
         for value in 1..=7 {
             for _ in 0..4 {
-                cards.push(Mahjong::new(Suit::Z, value, None));
+                cards.push(Mahjong::new(Suit::Z, value));
             }
         }
 

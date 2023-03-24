@@ -30,10 +30,10 @@ pub fn run() {
 }
 
 fn show_players_cards(player1: &Player, player2: &Player, player3: &Player, player4: &Player) {
-    println!("Player 1's hand: {}", player1.print_hand());
-    println!("Player 2's hand: {}", player2.print_hand());
-    println!("Player 3's hand: {}", player3.print_hand());
-    println!("Player 4's hand: {}", player4.print_hand());
+    println!("Player 1's hand: {}", player1.info());
+    println!("Player 2's hand: {}", player2.info());
+    println!("Player 3's hand: {}", player3.info());
+    println!("Player 4's hand: {}", player4.info());
 }
 
 fn clear_screen() {

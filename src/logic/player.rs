@@ -13,10 +13,28 @@ pub struct Player {
 }
 
 // 添加一个枚举类型表示吃碰杠的组合
+#[derive(PartialEq, Debug)]
 pub enum Meld {
-    Chi(Vec<Mahjong>),
-    Pon(Vec<Mahjong>),
-    Kan(Vec<Mahjong>),
+    Chi(Vec<Mahjong>, SeatPosition),
+    Pon(Vec<Mahjong>, SeatPosition),
+    Kan(Vec<Mahjong>, SeatPosition),
+}
+
+impl Meld {
+    fn string_meld_info(&self) -> String {
+        let mut meld_info = String::new();
+        let (cards, seat_position) = match self {
+            Meld::Chi(cards, s) => (cards, s),
+            Meld::Pon(cards, s) => (cards, s),
+            Meld::Kan(cards, s) => (cards, s),
+        };
+
+        for card in cards {
+            meld_info.push_str(&format!("{}", card.value));
+        }
+        meld_info.push_str(&format!("{}", seat_position));
+        meld_info
+    }
 }
 
 #[derive(PartialEq)]
@@ -26,12 +44,23 @@ pub enum Action {
     Minkan(Mahjong),
 }
 
-#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 pub enum SeatPosition {
     East,
     South,
     West,
     North,
+}
+
+impl std::fmt::Display for SeatPosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SeatPosition::East => write!(f, "e"),
+            SeatPosition::South => write!(f, "s"),
+            SeatPosition::West => write!(f, "w"),
+            SeatPosition::North => write!(f, "n"),
+        }
+    }
 }
 
 impl Player {
@@ -90,22 +119,29 @@ impl Player {
         self.hand.sort_by(|a, b| a.cmp(b));
     }
 
-    pub fn print_hand(&self) -> String {
-        let mut hand = String::new();
+    pub fn info(&self) -> String {
+        let mut info = String::new();
         let mut iter = self.hand.iter().peekable();
 
+        info.push_str("手牌: ");
         while let Some(this_card) = iter.next() {
-            hand.push_str(&format!("{}", this_card.value));
+            info.push_str(&format!("{}", this_card.value));
 
             if let Some(next_card) = iter.peek() {
                 if next_card.suit != this_card.suit {
-                    hand.push_str(&format!("{} ", this_card.suit));
+                    info.push_str(&format!("{} ", this_card.suit));
                 }
             } else {
-                hand.push_str(&format!("{}", this_card.suit));
+                info.push_str(&format!("{}", this_card.suit));
             }
         }
-        hand
+
+        info.push_str(" 副露: ");
+        for meld in &self.melds {
+            info.push_str(&format!("{} ", meld.string_meld_info()));
+        }
+
+        info
     }
 
     // 添加其他方法以支持玩家的游戏功能，例如摸牌、打牌、吃碰杠等
@@ -113,13 +149,13 @@ impl Player {
 
 impl Player {
     /// 检查当前玩家是否可以吃上家的牌, 返回所有可能的吃牌组合
-    pub fn can_chi(&self, card: &Mahjong) -> Vec<Vec<Mahjong>> {
+    pub fn can_chi(&self, card: &Mahjong, seat_position: &SeatPosition) -> Vec<Vec<Mahjong>> {
         // 检查当前玩家是否可以吃上家的牌
-        match (&self.seat_position, card.belongs_to) {
-            (SeatPosition::East, Some(SeatPosition::North)) => (),
-            (SeatPosition::South, Some(SeatPosition::East)) => (),
-            (SeatPosition::West, Some(SeatPosition::South)) => (),
-            (SeatPosition::North, Some(SeatPosition::West)) => (),
+        match (self.seat_position, seat_position) {
+            (SeatPosition::East, SeatPosition::North) => (),
+            (SeatPosition::South, SeatPosition::East) => (),
+            (SeatPosition::West, SeatPosition::South) => (),
+            (SeatPosition::North, SeatPosition::West) => (),
             _ => return Vec::new(),
         }
 
@@ -134,17 +170,14 @@ impl Player {
                 Mahjong {
                     suit: card.suit,
                     value: card.value + i - 1,
-                    belongs_to: card.belongs_to,
                 },
                 Mahjong {
                     suit: card.suit,
                     value: card.value + i,
-                    belongs_to: card.belongs_to,
                 },
                 Mahjong {
                     suit: card.suit,
                     value: card.value + i + 1,
-                    belongs_to: card.belongs_to,
                 },
             ];
 
@@ -163,28 +196,27 @@ impl Player {
     }
 
     /// 碰牌    
-    pub fn pon(&mut self, card: Mahjong) -> bool {
+    pub fn pon(&mut self, card: Mahjong, discard_position: &SeatPosition) -> bool {
         // 确保玩家不能碰自己打出的牌
-        if let Some(belongs) = card.belongs_to {
-            if self.seat_position == belongs {
-                return false;
-            }
+        if &self.seat_position == discard_position {
+            return false;
         }
 
         // 检查玩家手中是否有两张与打出的牌相同的牌
         let matching_cards: Vec<Mahjong> = self
             .hand
             .iter()
-            .filter(|mahjong| mahjong.is_same_mahjong(&card))
+            .filter(|mahjong| mahjong == &&card)
             .cloned()
             .collect();
-        if matching_cards.len() < 2 {
+        if matching_cards.len() != 2 {
             return false;
         }
 
         // 移除手牌中的两张匹配牌，并将碰牌组合添加到碰杠组中
-
-        self.melds.push(Meld::Pon(vec![card, card, card]));
+        self.hand.retain(|mahjong| mahjong != &card);
+        self.melds
+            .push(Meld::Pon(vec![card, card, card], discard_position.clone()));
 
         true
     }
@@ -197,7 +229,7 @@ impl Player {
         let mut available_actions = Vec::new();
 
         // 检查是否可以吃牌
-        let chi_combinations = self.can_chi(card);
+        let chi_combinations = self.can_chi(card, discard_seat_position);
         if !chi_combinations.is_empty() {
             for combination in chi_combinations {
                 available_actions.push(Action::Chi(combination));
