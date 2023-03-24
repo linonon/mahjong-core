@@ -1,6 +1,6 @@
 use rand::{seq::SliceRandom, thread_rng, SeedableRng};
 
-use super::mahjong::{Mahjong, Suit};
+use super::mahjong::Mahjong;
 
 pub struct Deck {
     pub cards: Vec<Mahjong>,
@@ -24,32 +24,29 @@ impl Deck {
         deck.shuffle();
         deck
     }
-
     pub fn generate_cards(&mut self) {
-        let mut cards = Vec::<Mahjong>::with_capacity(136);
+        let mut deck = Vec::<Mahjong>::with_capacity(136);
 
-        for suit in &[Suit::M, Suit::P, Suit::S] {
-            cards.push(Mahjong::new(*suit, 0));
-            for value in 1..=9 {
-                if value == 5 {
-                    for _ in 0..3 {
-                        cards.push(Mahjong::new(*suit, value));
-                    }
-                } else {
-                    for _ in 0..4 {
-                        cards.push(Mahjong::new(*suit, value));
-                    }
+        for suit in &[|v| Mahjong::M(v), |v| Mahjong::P(v), |v| Mahjong::S(v)] {
+            deck.push(suit(0));
+            for value in 0..=9 {
+                let num_copies = match value {
+                    0 | 5 => 3,
+                    _ => 4,
+                };
+                for _ in 0..num_copies {
+                    deck.push(suit(value));
                 }
             }
         }
 
         for value in 1..=7 {
             for _ in 0..4 {
-                cards.push(Mahjong::new(Suit::Z, value));
+                deck.push(Mahjong::Z(value));
             }
         }
 
-        self.cards = cards
+        self.cards = deck;
     }
 
     #[allow(dead_code)]

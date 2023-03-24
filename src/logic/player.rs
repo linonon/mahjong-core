@@ -1,7 +1,4 @@
-use super::{
-    deck::Deck,
-    mahjong::{Mahjong, Suit},
-};
+use super::{deck::Deck, mahjong::Mahjong};
 
 pub struct Player {
     pub id: u64,                       // 玩家 ID
@@ -23,14 +20,14 @@ pub enum Meld {
 impl Meld {
     fn string_meld_info(&self) -> String {
         let mut meld_info = String::new();
-        let (cards, seat_position) = match self {
+        let (mahjongs, seat_position) = match self {
             Meld::Chi(cards, s) => (cards, s),
             Meld::Pon(cards, s) => (cards, s),
             Meld::Kan(cards, s) => (cards, s),
         };
 
-        for card in cards {
-            meld_info.push_str(&format!("{}", card.value));
+        for mahjong in mahjongs {
+            meld_info.push_str(&format!("{}", mahjong.get_value()));
         }
         meld_info.push_str(&format!("{}", seat_position));
         meld_info
@@ -124,15 +121,16 @@ impl Player {
         let mut iter = self.hand.iter().peekable();
 
         info.push_str("手牌: ");
-        while let Some(this_card) = iter.next() {
-            info.push_str(&format!("{}", this_card.value));
+        while let Some(this_mahjong) = iter.next() {
+            info.push_str(&format!("{}", this_mahjong.get_value()));
 
             if let Some(next_card) = iter.peek() {
-                if next_card.suit != this_card.suit {
-                    info.push_str(&format!("{} ", this_card.suit));
+                if next_card.get_suit_order() != this_mahjong.get_suit_order() {
+                    info.push_str(&format!("{} ", this_mahjong.get_suit_string()));
                 }
             } else {
-                info.push_str(&format!("{}", this_card.suit));
+                // 最后一张牌
+                info.push_str(&format!("{}", this_mahjong.get_suit_string()));
             }
         }
 
@@ -149,7 +147,7 @@ impl Player {
 
 impl Player {
     /// 检查当前玩家是否可以吃上家的牌, 返回所有可能的吃牌组合
-    pub fn can_chi(&self, card: &Mahjong, seat_position: &SeatPosition) -> Vec<Vec<Mahjong>> {
+    pub fn can_chi(&self, mahjong: &Mahjong, seat_position: &SeatPosition) -> Vec<Vec<Mahjong>> {
         // 检查当前玩家是否可以吃上家的牌
         match (self.seat_position, seat_position) {
             (SeatPosition::East, SeatPosition::North) => (),
@@ -159,31 +157,27 @@ impl Player {
             _ => return Vec::new(),
         }
 
-        if card.suit == Suit::Z {
+        if mahjong.is_z() {
             return Vec::new(); // 字牌不能吃
         }
 
         let mut possible_combinations = Vec::new();
 
         for i in -1..=1 {
-            let sequence = vec![
-                Mahjong {
-                    suit: card.suit,
-                    value: card.value + i - 1,
-                },
-                Mahjong {
-                    suit: card.suit,
-                    value: card.value + i,
-                },
-                Mahjong {
-                    suit: card.suit,
-                    value: card.value + i + 1,
-                },
-            ];
+            let sequence: Vec<Mahjong> = match mahjong {
+                Mahjong::M(value) | Mahjong::P(value) | Mahjong::S(value) => {
+                    vec![
+                        mahjong.with_value(value + i - 1),
+                        mahjong.with_value(value + i),
+                        mahjong.with_value(value + i + 1),
+                    ]
+                }
+                Mahjong::Z(_) => continue,
+            };
 
             if sequence
                 .iter()
-                .all(|mahjong| mahjong.value >= 1 && mahjong.value <= 9)
+                .all(|mahjong| mahjong.get_value() >= 1 && mahjong.get_value() <= 9)
                 && sequence[0..2]
                     .iter()
                     .all(|mahjong| self.hand.contains(mahjong))
