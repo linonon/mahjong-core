@@ -1,4 +1,5 @@
 use super::{deck::Deck, mahjong::Mahjong};
+use anyhow::{Ok, Result};
 
 pub struct Player {
     pub id: u64,                       // 玩家 ID
@@ -81,30 +82,40 @@ impl Player {
         };
     }
 
-    // 从牌堆中获得一张牌到 hand 中
-    pub fn add_hand(&mut self, deck: &mut Deck) {
-        if let Some(drawn) = deck.get_one_card() {
-            self.hand.push(drawn);
-            self.sort_hand();
-        } else {
-            panic!("No more cards left in the deck!");
-        };
+    // 从牌堆中获得一张牌到 hand 中, 通常用在游戏开始时
+    pub fn add_hand(&mut self, deck: &mut Deck) -> Result<()> {
+        match deck.get_one_card() {
+            Some(card) => {
+                self.hand.push(card);
+                self.sort_hand();
+                return Ok(());
+            }
+            None => return Err(anyhow::anyhow!("drawn_card is None!")),
+        }
     }
 
-    pub fn discard(&mut self, index: usize) -> Option<Mahjong> {
-        if index == 0 {
-            self.drawn_card.take()
-        } else {
-            let discard = self.hand.remove(index - 1);
-            if let Some(drawn) = self.drawn_card {
-                self.hand.push(drawn);
-                self.sort_hand();
-            } else {
-                panic!("No card in drawn_card!")
-            }
-
-            Some(discard)
+    pub fn discard(&mut self, index: usize) -> Result<Mahjong> {
+        if self.drawn_card.is_none() {
+            return Err(anyhow::anyhow!("drawn_card is None!"));
         }
+
+        let drawn_card = self.drawn_card.take().unwrap();
+
+        // 将抽到手上的牌打出
+        if index == 0 {
+            return Ok(drawn_card);
+        }
+
+        if index > self.hand.len() {
+            self.drawn_card = Some(drawn_card); // 恢复 drawn_card
+            return Err(anyhow::anyhow!("index out of range!"));
+        }
+
+        let discarded_card = self.hand.remove(index - 1);
+        self.hand.push(drawn_card);
+        self.sort_hand();
+
+        Ok(discarded_card)
     }
 
     pub fn push_in_discarded(&mut self, card: Mahjong) {

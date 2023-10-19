@@ -1,7 +1,8 @@
+pub mod command;
+pub mod g;
 pub mod logic;
-#[path = "command/terminal.rs"]
-mod terminal;
 
+use crate::command::terminal;
 use clap::{Parser, Subcommand};
 
 /// Simple program to greet a person
@@ -38,4 +39,6 @@ fn main() {
         }
         None => {}
     }
+
+    println!("server exit")
 }
